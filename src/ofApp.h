@@ -4,6 +4,8 @@
 #include "ofxOsc.h"               // Include the main ofxOSC header 
 #include "ofxGrt.h"               // Include the main ofxGrt header
 #include "ofxKinectForWindows2.h" // Include KinectforWindows2 header
+#define SEND_PORT 5001
+#define HOST "localhost"
 
 using namespace GRT; // State that we want to use the GRT namespace
 
@@ -25,5 +27,7 @@ class ofApp : public ofBaseApp{
 		void windowResized(int w, int h);
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
+
+		ofxOscSender oscSender;
 		
 };
