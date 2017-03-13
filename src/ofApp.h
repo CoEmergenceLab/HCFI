@@ -4,6 +4,8 @@
 #include "ofxOsc.h"               // Include the main ofxOSC header 
 #include "ofxGrt.h"               // Include the main ofxGrt header
 #include "ofxKinectForWindows2.h" // Include KinectforWindows2 header
+
+#define MAX_BODY_TRACK 2          // tracking a maximum of two bodies
 #define SEND_PORT 5001
 #define HOST "localhost"
 
@@ -35,11 +37,11 @@ class ofApp : public ofBaseApp{
 		ofxKFW2::Device kinect;
 
 		// Create some variables for gesture recognition
-		TimeSeriesClassificationData trainingData; // store our training data
-		GestureRecognitionPipeline pipeline;       // wrapper for our classifier and any pre/post processing modules
-		bool record;                               // flag that keeps track of when we should record training data
-		UINT trainingClassLabel;                   // holds the current label for when we are training the classifier
-		string infoText;                           // used to draw some info messages to the main app window
-		UINT numPipelines;						   // number of GestureRecognitionPipeline objects (corresponds to the # of people we want to track)
+		TimeSeriesClassificationData trainingData;    // store our training data
+		GestureRecognitionPipeline pipeline;          // wrapper for our classifier and any pre/post processing modules
+		bool record;                                  // flag that keeps track of when we should record training data
+		UINT trainingClassLabel;                      // holds the current label for when we are training the classifier
+		string infoText;                              // used to draw some info messages to the main app window
+		vector<GestureRecognitionPipeline> pipelines; // a vector to hold each pipeline
 		
 };
