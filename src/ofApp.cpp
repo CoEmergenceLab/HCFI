@@ -1,7 +1,20 @@
 #include "ofApp.h"
 
+int kinectPreviewWidth = 640;
+int kinectPreviewHeight = 480;
+
 //--------------------------------------------------------------
 void ofApp::setup(){
+	ofSetFrameRate(60);
+
+	// initialize the Kinect
+	kinect.open();
+	kinect.initColorSource();
+	kinect.initBodySource();
+	kinect.initBodyIndexSource();
+
+	// set the dimesions of the app window
+	ofSetWindowShape(1920, 1080);
 
 }
 

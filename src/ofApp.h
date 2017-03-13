@@ -28,6 +28,18 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
 
+		// OSC sender object
 		ofxOscSender oscSender;
+
+		// Kinect object
+		ofxKFW2::Device kinect;
+
+		// Create some variables for gesture recognition
+		TimeSeriesClassificationData trainingData; // store our training data
+		GestureRecognitionPipeline pipeline;       // wrapper for our classifier and any pre/post processing modules
+		bool record;                               // flag that keeps track of when we should record training data
+		UINT trainingClassLabel;                   // holds the current label for when we are training the classifier
+		string infoText;                           // used to draw some info messages to the main app window
+		UINT numPipelines;						   // number of GestureRecognitionPipeline objects (corresponds to the # of people we want to track)
 		
 };
