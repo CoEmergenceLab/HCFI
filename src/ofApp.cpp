@@ -1,7 +1,27 @@
+/*
+HCFI MIT License
+Copyright (c) <2017> <Carlos Castellanos, Digital/Experiemntal Media Lab, Kansas STate University>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+and associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial
+portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
 #include "ofApp.h"
 
-int kinectPreviewWidth = 640;
-int kinectPreviewHeight = 480;
+unsigned int kinectPreviewWidth = 640;
+unsigned int kinectPreviewHeight = 480;
 
 //--------------------------------------------------------------
 void ofApp::setup(){
@@ -52,7 +72,7 @@ void ofApp::setup(){
 	oscSender.setup(HOST, SEND_PORT);
 
 	// set the dimesions of the app window
-	ofSetWindowShape(1920, 1080);
+	ofSetWindowShape(WIN_WIDTH, WIN_HEIGHT);
 }
 
 //--------------------------------------------------------------
@@ -121,6 +141,70 @@ void ofApp::update(){
 void ofApp::draw(){
 	ofBackground(0);
 
+	// === GRT text display === //
+	string text;
+	int textX = 20;
+	int textY = 20;
+
+	// Draw the training info
+	ofSetColor(255);
+	text = "------------------- TrainingInfo -------------------";
+	ofDrawBitmapString(text, textX, textY);
+
+	if (recordGesture) ofSetColor(255, 0, 0);
+	else ofSetColor(255);
+	textY += 15;
+	text = recordGesture ? "RECORDING" : "Not Recording";
+	ofDrawBitmapString(text, textX, textY);
+
+	ofSetColor(255);
+	textY += 15;
+	text = "TrainingClassLabel: " + ofToString(trainingClassLabel);
+	ofDrawBitmapString(text, textX, textY);
+
+	textY += 15;
+	text = "NumTrainingSamples: " + ofToString(trainingData.getNumSamples());
+	ofDrawBitmapString(text, textX, textY);
+
+	// Draw the prediction info
+	textY += 30;
+	text = "------------------- Prediction Info -------------------";
+	ofDrawBitmapString(text, textX, textY);
+
+	textY += 15;
+	text = pipelines[0].getTrained() ? "Model Trained: YES" : "Model Trained: NO";
+	ofDrawBitmapString(text, textX, textY);
+
+	// draw the prediction info for each body/pipeline
+	for (int i = 0; i < MAX_BODY_TRACK; i++) {
+		textY += 15;
+		text = "Body " + i;
+		ofDrawBitmapString(text, textX, textY);
+
+		textY += 15;
+		text = "PredictedClassLabel: " + ofToString(pipelines[i].getPredictedClassLabel());
+		ofDrawBitmapString(text, textX, textY);
+
+		textY += 15;
+		text = "Likelihood: " + ofToString(pipelines[i].getMaximumLikelihood());
+		ofDrawBitmapString(text, textX, textY);
+
+		textY += 15;
+		text = "SampleRate: " + ofToString(ofGetFrameRate(), 2);
+		ofDrawBitmapString(text, textX, textY);
+	}
+
+	// Draw the info text
+	textY += 30;
+	text = "InfoText: " + infoText;
+	ofDrawBitmapString(text, textX, textY);
+
+	// === Kinect video/tracking display === //
+	// Draw the kinect image sources
+	kinect.getBodyIndexSource()->draw(WIN_WIDTH-kinectPreviewWidth, WIN_HEIGHT-kinectPreviewHeight, kinectPreviewWidth, kinectPreviewHeight);
+	kinect.getBodySource()->drawProjected(WIN_WIDTH-kinectPreviewWidth, WIN_HEIGHT-kinectPreviewHeight, kinectPreviewWidth, kinectPreviewHeight, ofxKFW2::ProjectionCoordinates::DepthCamera);
+
+	// === OSC data === //
 }
 
 //--------------------------------------------------------------
@@ -148,7 +232,7 @@ void ofApp::keyPressed(int key){
 	case 't':
 		// train the first pipeline and make copies of the rest for prediction
 		if (pipelines[0].train(trainingData)) {
-			for (unsigned int i = 1; i < MAX_BODY_TRACK; i++) {
+			for (int i = 1; i < MAX_BODY_TRACK; i++) {
 				GestureRecognitionPipeline p(pipelines[0]);
 				pipelines[i] = p;
 			}
