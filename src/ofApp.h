@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define WIN_WIDTH 1920
 #define WIN_HEIGHT 1080
 
-using namespace GRT; // State that we want to use the GRT namespace
+using namespace GRT;              // State that we want to use the GRT namespace
 
 class ofApp : public ofBaseApp{
 
@@ -58,8 +58,9 @@ class ofApp : public ofBaseApp{
 
 		// Kinect object
 		ofxKFW2::Device kinect;
+		unsigned int numTracked;                              // the number of bodies currently being tracked
 
-		// Create some variables for gesture recognition
+		// Create some variables for gesture recognition using GRT
 		LabelledTimeSeriesClassificationData trainingData;    // store our training data
 		MatrixDouble timeseries;                              // store a single training sample
 		GestureRecognitionPipeline pipelines[MAX_BODY_TRACK]; // wrapper for our classifiers and any pre/post processing modules

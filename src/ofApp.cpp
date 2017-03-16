@@ -25,7 +25,7 @@ unsigned int kinectPreviewHeight = 480;
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	ofSetFrameRate(60);
+	ofSetFrameRate(30);
 
 	// ==== GRT ==== //
 	//Initialize the training and info variables
@@ -43,10 +43,10 @@ void ofApp::setup(){
 	//Turn on null rejection, this lets the classifier output the predicted class label of 0 when the likelihood of a gesture is low
 	dtw.enableNullRejection(true);
 
-	//Set the null rejection coefficient to 3, this controls the thresholds for the automatic null rejection
+	//Set the null rejection coefficient to 2, this controls the thresholds for the automatic null rejection
 	//You can increase this value if you find that your real-time gestures are not being recognized
 	//If you are getting too many false positives then you should decrease this value
-	dtw.setNullRejectionCoeff(3);
+	dtw.setNullRejectionCoeff(2);
 
 	//Turn on the automatic data triming, this will remove any sections of none movement from the start and end of the training samples
 	dtw.enableTrimTrainingData(true, 0.1, 90);
@@ -66,6 +66,7 @@ void ofApp::setup(){
 	kinect.initColorSource();
 	kinect.initBodySource();
 	kinect.initBodyIndexSource();
+	numTracked = 0;
 
 	// ==== OSC ==== //
 	// open an outgoing connection to HOST:SEND_PORT
@@ -79,44 +80,50 @@ void ofApp::setup(){
 void ofApp::update(){
 	float distLeft = 0.0;
 	float distRight = 0.0;
-	int handLeftState = 0;
-	int handRightState = 0;
+	float handLeftState = 0;
+	float handRightState = 0;
 
 	// ==== get the Kinect data first ==== //
 	kinect.update();
 
-	// Getting joint positions (skeleton tracking)
+	// Get joint positions (skeleton tracking)
 	{
 		auto bodies = kinect.getBodySource()->getBodies();
-		unsigned int numTracked = 0;
+		unsigned int trackCount = 0;
 		for (auto body : bodies) {
 			// only tracking up to MAX_BODY_TRACK
-			if(body.tracked) numTracked++; // make sure the body is actually being tracked
-			if (numTracked > 0 && numTracked <= MAX_BODY_TRACK) {
-				auto joints = body.joints;
-				// get hand positions
-				float handLeftX = joints[JointType_HandLeft].getPosition().x;
-				float handLeftY = joints[JointType_HandLeft].getPosition().y;
-				float handLeftZ = joints[JointType_HandLeft].getPosition().z;
-				float handRightX = joints[JointType_HandRight].getPosition().x;
-				float handRightY = joints[JointType_HandRight].getPosition().y;
-				float handRightZ = joints[JointType_HandRight].getPosition().z;
-				// get hand states (open=2, closed=3, lasso=4, notracked=1, unknown=0)
-				handLeftState = body.leftHandState;
-				handRightState = body.rightHandState;
-				// get head position
-				float headX = joints[JointType_Head].getPosition().x;
-				float headY = joints[JointType_Head].getPosition().y;
-				float headZ = joints[JointType_Head].getPosition().z;
-				// get eucidian distance between hands and head
-				distLeft = ofDist(handLeftX, handLeftY, handLeftZ, headX, headY, headZ);
-				distRight = ofDist(handRightX, handRightY, handRightZ, headX, headY, headZ);
+			if (body.tracked) { // make sure the body is actually being tracked
+				trackCount++;
+				if (trackCount > 0 && trackCount <= MAX_BODY_TRACK) {
+					auto joints = body.joints;
+					// get hand positions
+					float handLeftX = joints[JointType_HandLeft].getPosition().x;
+					float handLeftY = joints[JointType_HandLeft].getPosition().y;
+					float handLeftZ = joints[JointType_HandLeft].getPosition().z;
+					float handRightX = joints[JointType_HandRight].getPosition().x;
+					float handRightY = joints[JointType_HandRight].getPosition().y;
+					float handRightZ = joints[JointType_HandRight].getPosition().z;
+					// get hand states (open=2, closed=3, lasso=4, notracked=1, unknown=0)
+					handLeftState = body.leftHandState;
+					handRightState = body.rightHandState;
+					//ofLog(OF_LOG_NOTICE, "left hand state: " + ofToString(handLeftState));
+					// get head position
+					float headX = joints[JointType_Head].getPosition().x;
+					float headY = joints[JointType_Head].getPosition().y;
+					float headZ = joints[JointType_Head].getPosition().z;
+					// get eucidian distance between hands and head
+					distLeft = ofDist(handLeftX, handLeftY, handLeftZ, headX, headY, headZ);
+					distRight = ofDist(handRightX, handRightY, handRightZ, headX, headY, headZ);
+				}
 			}
 		}
+		// update the global variable numTracked with the number of bodies just tracked
+		numTracked = trackCount;
 	}
 
+
 	// ==== process the GRT data next === //
-	// store the relveat data taken from the kinect
+	// store the relevant data taken from the kinect
 	VectorDouble sample(NUM_DIMENSIONS);
 	sample[0] = distLeft;
 	sample[1] = distRight;
@@ -130,11 +137,12 @@ void ofApp::update(){
 
 	// If pipelines[0] has been trained, then run the prediction for all the pipelines
 	if (pipelines[0].getTrained()) {
-		for (unsigned int i = 0; i < MAX_BODY_TRACK; i++) {
+		for (unsigned int i = 0; i < numTracked; i++) {
 			pipelines[i].predict(sample);
 		}
 	}
 
+	
 }
 
 //--------------------------------------------------------------
@@ -176,9 +184,9 @@ void ofApp::draw(){
 	ofDrawBitmapString(text, textX, textY);
 
 	// draw the prediction info for each body/pipeline
-	for (int i = 0; i < MAX_BODY_TRACK; i++) {
+	for (int i = 0; i < numTracked; i++) {
 		textY += 15;
-		text = "Body " + i;
+		text = "Body " + ofToString(i);
 		ofDrawBitmapString(text, textX, textY);
 
 		textY += 15;
@@ -192,6 +200,10 @@ void ofApp::draw(){
 		textY += 15;
 		text = "SampleRate: " + ofToString(ofGetFrameRate(), 2);
 		ofDrawBitmapString(text, textX, textY);
+
+		textY += 5;
+		text = "_____________________________";
+		ofDrawBitmapString(text, textX, textY);
 	}
 
 	// Draw the info text
@@ -199,12 +211,78 @@ void ofApp::draw(){
 	text = "InfoText: " + infoText;
 	ofDrawBitmapString(text, textX, textY);
 
+	// Draw the timeseries data (while recording)
+	if (recordGesture) {
+		textX += 200;
+		ofSetColor(90, 120, 255);
+		for (UINT i = 0; i<timeseries.getNumRows(); i++) {
+			double lDist = timeseries[i][0];
+			double rDist = timeseries[i][1];
+			double lHandState = timeseries[i][2];
+			double rHandState = timeseries[i][3];
+
+			// draw left hand distance
+			text = "Left Hand Distance: " + ofToString(lDist);
+			ofDrawBitmapString(text, textX, textY);
+			textY += 15;
+			// draw right hand distance
+			text = "Right Hand Distance: " + ofToString(rDist);
+			ofDrawBitmapString(text, textX, textY);
+			textY += 15;
+			// draw left hand state
+			text = "Left Hand State: " + ofToString(lHandState);
+			ofDrawBitmapString(text, textX, textY);
+			textY += 15;
+			// draw right hand state
+			text = "Right Hand State: " + ofToString(rHandState);
+			ofDrawBitmapString(text, textX, textY);
+			textY += 15;
+		}
+	}
+
+	// Draw the timeseries data (during prediction, for all pipelines/bodies)
+	if (pipelines[0].getTrained()) {
+		for (UINT i = 0; i < numTracked; i++) {
+			textX += 200;
+			// Draw the data in the DTW input buffer
+			DTW *dtw = pipelines[i].getClassifier< DTW >();
+
+			if (dtw != NULL) {
+				vector< VectorDouble > inputData = dtw->getInputDataBuffer();
+				for (UINT i = 0; i<inputData.size(); i++) {
+					double lDist = inputData[i][0];
+					double rDist = inputData[i][1];
+					double lHandState = inputData[i][2];
+					double rHandState = inputData[i][3];
+
+					// draw left hand distance
+					text = "Left Hand Distance: " + ofToString(lDist);
+					ofDrawBitmapString(text, textX, textY);
+					textY += 15;
+					// draw right hand distance
+					text = "Right Hand Distance: " + ofToString(rDist);
+					ofDrawBitmapString(text, textX, textY);
+					textY += 15;
+					// draw left hand state
+					text = "Left Hand State: " + ofToString(lHandState);
+					ofDrawBitmapString(text, textX, textY);
+					textY += 15;
+					// draw right hand state
+					text = "Right Hand State: " + ofToString(rHandState);
+					ofDrawBitmapString(text, textX, textY);
+					textY += 15;
+				}
+			}
+		}
+	}
+
 	// === Kinect video/tracking display === //
 	// Draw the kinect image sources
-	kinect.getBodyIndexSource()->draw(WIN_WIDTH-kinectPreviewWidth, WIN_HEIGHT-kinectPreviewHeight, kinectPreviewWidth, kinectPreviewHeight);
-	kinect.getBodySource()->drawProjected(WIN_WIDTH-kinectPreviewWidth, WIN_HEIGHT-kinectPreviewHeight, kinectPreviewWidth, kinectPreviewHeight, ofxKFW2::ProjectionCoordinates::DepthCamera);
+	kinect.getBodyIndexSource()->draw(WIN_WIDTH-kinectPreviewWidth, 0, kinectPreviewWidth, kinectPreviewHeight);
+	kinect.getBodySource()->drawProjected(WIN_WIDTH-kinectPreviewWidth, 0, kinectPreviewWidth, kinectPreviewHeight, ofxKFW2::ProjectionCoordinates::DepthCamera);
 
 	// === OSC data === //
+	//TODO
 }
 
 //--------------------------------------------------------------
@@ -218,7 +296,7 @@ void ofApp::keyPressed(int key){
 		if (!recordGesture) {
 			trainingData.addSample(trainingClassLabel, timeseries);
 
-			//Clear the timeseries for the next recording
+			// clear the timeseries for the next recording
 			timeseries.clear();
 		}
 		break;
@@ -232,7 +310,7 @@ void ofApp::keyPressed(int key){
 	case 't':
 		// train the first pipeline and make copies of the rest for prediction
 		if (pipelines[0].train(trainingData)) {
-			for (int i = 1; i < MAX_BODY_TRACK; i++) {
+			for (int i = 1; i < numTracked; i++) {
 				GestureRecognitionPipeline p(pipelines[0]);
 				pipelines[i] = p;
 			}
