@@ -1,6 +1,6 @@
 /*
 HCFI MIT License
-Copyright (c) <2017> <Carlos Castellanos, Digital/Experiemntal Media Lab, Kansas STate University>
+Copyright (c) <2017> <Carlos Castellanos, Digital/Experimental Media Lab, Kansas State University>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 and associated documentation files (the "Software"), to deal in the Software without restriction,
